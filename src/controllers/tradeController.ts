@@ -1,15 +1,17 @@
 import { Request, Response } from 'express';
 import HTTPStatusCode from 'http-status-codes';
+import { PrismaClient } from '@prisma/client';
 
 import { cloudinaryFileUploadService } from '../config/cloudinary';
-import { Trade } from '../models/trade';
+
+const prisma = new PrismaClient();
 
 /**
  * get all the trades based on the userId
  */
 export const findAllTradesByUserId = async (req: Request, res: Response) => {
     try {
-        const trades = await Trade.findAll({
+        const trades = await prisma.trade.findMany({
             where: {
                 user_id: req.body.user_id,
             },
@@ -26,8 +28,8 @@ export const findAllTradesByUserId = async (req: Request, res: Response) => {
  */
 export const createTrade = async (req: Request, res: Response) => {
     try {
-        const trade = await Trade.create(req.body);
-        res.status(HTTPStatusCode.CREATED).json({ message: 'Trade created successfully', trade: trade.toJSON() });
+        const trade = await prisma.trade.create({ data: req.body });
+        res.status(HTTPStatusCode.CREATED).json({ message: 'Trade created successfully', trade });
     } catch (error) {
         console.error('Error creating trade:', error);
         res.status(HTTPStatusCode.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
