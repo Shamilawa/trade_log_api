@@ -1,67 +1,138 @@
-import { Request, Response } from 'express';
-import HTTPStatusCode from 'http-status-codes';
 import { PrismaClient } from '@prisma/client';
+import HTTPStatusCode from 'http-status-codes';
+import { Request, Response } from 'express';
 
+import {
+    TRADE_SCREENSHOT_TYPE,
+    createTradePayloadType,
+    findAllTradesByUserIdPayloadType,
+    saveScreenshotByTradeIdPayload,
+    saveTradeScreenshotByTradeIdType,
+} from '../types';
 import { cloudinaryFileUploadService } from '../config/cloudinary';
+import { ORMExceptionsHandle } from '../utils';
 
 const prisma = new PrismaClient();
 
 /**
  * get all the trades based on the userId
  */
-export const findAllTradesByUserId = async (req: Request, res: Response) => {
+export const findAllTradesByUserId = async (req: Request<{}, {}, findAllTradesByUserIdPayloadType>, res: Response) => {
     try {
+        const user_id = req.body.user_id;
+
+        if (!user_id) {
+            return res.status(HTTPStatusCode.BAD_REQUEST).json({ error: 'user_id is required' });
+        }
+
         const trades = await prisma.trade.findMany({
             where: {
-                user_id: req.body.user_id,
+                user_id: user_id,
             },
         });
+
         res.status(HTTPStatusCode.OK).json(trades);
     } catch (error) {
-        console.error('Error fetching trades:', error);
-        res.status(HTTPStatusCode.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
+        ORMExceptionsHandle(error, res);
     }
 };
 
 /**
  * create a trade
  */
-export const createTrade = async (req: Request, res: Response) => {
+export const createTrade = async (req: Request<{}, {}, createTradePayloadType>, res: Response) => {
     try {
+        console.log('This api point triggered');
         const trade = await prisma.trade.create({ data: req.body });
         res.status(HTTPStatusCode.CREATED).json({ message: 'Trade created successfully', trade });
     } catch (error) {
-        console.error('Error creating trade:', error);
-        res.status(HTTPStatusCode.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
+        ORMExceptionsHandle(error, res);
     }
 };
 
-/**
- * Save entry screenshot for particular trade
- */
-export const saveEntryScreenshotByTradeId = async (req: Request, res: Response) => {
+export const saveTradeScreenshotByTradeId = async (
+    req: Request<{}, {}, saveTradeScreenshotByTradeIdType>,
+    res: Response
+) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
+            return res
+                .status(HTTPStatusCode.BAD_REQUEST)
+                .json({ message: 'Please make sure to upload the image file' });
         }
 
-        // tradeId
-        const tradeId = req.params.tradeId;
+        if (
+            req.file.mimetype !== 'image/jpeg' &&
+            req.file.mimetype !== 'image/jpg' &&
+            req.file.mimetype !== 'image/png'
+        ) {
+            return res
+                .status(HTTPStatusCode.BAD_REQUEST)
+                .json({ message: 'Please make sure to upload only supported formats.' });
+        }
 
-        // generate a unique file name
-        const uniqueFileName = `${'trade_entry_' + req.params.tradeId}`;
+        if (!req.body.tradeId) {
+            return res.status(HTTPStatusCode.BAD_REQUEST).json({ message: 'tradeId is required' });
+        }
 
-        // Upload file to Cloudinary
-        const result = await cloudinaryFileUploadService(
+        if (!req.body.userId) {
+            return res.status(HTTPStatusCode.BAD_REQUEST).json({ message: 'userId is required' });
+        }
+
+        if (!req.body.screenshotType) {
+            return res.status(HTTPStatusCode.BAD_REQUEST).json({ message: 'screenshotType is required' });
+        }
+
+        const trade = await prisma.trade.findUnique({
+            where: {
+                id: parseInt(req.body.tradeId),
+                user_id: parseInt(req.body.userId),
+            },
+        });
+
+        if (!trade) {
+            return res
+                .status(HTTPStatusCode.NOT_FOUND)
+                .json({ message: 'Trade not found. try again later or try with different trade id' });
+        }
+
+        const uniqueFileName = `${trade.id + '_' + trade.user_id + '_' + '_' + req.body.screenshotType.toLowerCase()}`;
+
+        const fileUploadResult = await cloudinaryFileUploadService(
             req.file.path,
             uniqueFileName,
-            process.env.CLOUDINARY_TRADE_ENTRIES_FOLDER_NAME
+            req.body.screenshotType === TRADE_SCREENSHOT_TYPE.ENTRY
+                ? process.env.CLOUDINARY_TRADE_ENTRIES_FOLDER_NAME
+                : process.env.CLOUDINARY_TRADE_EXITS_FOLDER_NAME
         );
 
-        // Return the Cloudinary URL of the uploaded image
-        res.status(200).json({ message: 'File uploaded successfully', url: result?.secure_url });
+        if (!fileUploadResult.secure_url) {
+            return res.status(HTTPStatusCode.INTERNAL_SERVER_ERROR).json({
+                message: 'Error uploading file to server. Please retry withing few minutes',
+            });
+        }
+
+        const updateTrade = await prisma.trade.update({
+            where: {
+                id: parseInt(req.body.tradeId),
+                user_id: parseInt(req.body.userId),
+            },
+            data: {
+                entry_screenshot_url:
+                    req.body.screenshotType === TRADE_SCREENSHOT_TYPE.ENTRY
+                        ? fileUploadResult.secure_url
+                        : trade.entry_screenshot_url,
+                exit_screenshot_url:
+                    req.body.screenshotType === TRADE_SCREENSHOT_TYPE.EXIT
+                        ? fileUploadResult.secure_url
+                        : trade.exit_screenshot_url,
+            },
+        });
+
+        return res
+            .status(HTTPStatusCode.CREATED)
+            .json({ message: 'Trade updated successfully with trade screenshots', updateTrade });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        ORMExceptionsHandle(error, res);
     }
 };

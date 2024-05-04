@@ -8,22 +8,24 @@ datasource db {
 }
 
 model Trade {
-  id                Int               @id @default(autoincrement())
-  currency_pair     String            @db.VarChar(255)
-  entry_price       Decimal?          @db.Decimal(10, 4)
-  exit_price        Decimal?          @db.Decimal(10, 4)
-  entry_time        DateTime?         @db.Timestamp(0)
-  exit_time         DateTime?         @db.Timestamp(0)
-  position_size     Float             @db.Float
-  profit            Decimal           @db.Decimal(10, 2)
-  status            trade_log_status?
-  strategy          String?           @db.VarChar(255)
-  risk_reward_ratio Decimal?          @db.Decimal(10, 2)
-  comment           String?           @db.VarChar(255)
-  created_at        DateTime?         @db.Timestamp(0)
-  updated_at        DateTime?         @db.Timestamp(0)
-  user_id           Int
-  user              User              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_id")
+  id                   Int               @id @default(autoincrement())
+  currency_pair        String            @db.VarChar(255)
+  entry_price          Decimal?          @db.Decimal(10, 4)
+  exit_price           Decimal?          @db.Decimal(10, 4)
+  entry_time           DateTime?         @db.Timestamp(0)
+  exit_time            DateTime?         @db.Timestamp(0)
+  position_size        Float             @db.Float
+  profit               Decimal           @db.Decimal(10, 2)
+  status               trade_log_status?
+  strategy             String?           @db.VarChar(255)
+  risk_reward_ratio    Decimal?          @db.Decimal(10, 2)
+  comment              String?           @db.VarChar(255)
+  created_at           DateTime?         @db.Timestamp(0)
+  updated_at           DateTime?         @db.Timestamp(0)
+  user_id              Int
+  entry_screenshot_url String?           @db.VarChar(255)
+  exit_screenshot_url  String?           @db.VarChar(255)
+  user                 User              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_id")
 
   @@index([user_id], map: "fk_user_id")
   @@map("trade_log")
