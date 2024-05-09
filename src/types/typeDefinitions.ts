@@ -1,6 +1,6 @@
 // request body typeDefinitions for better type safety
 export interface findAllTradesByUserIdPayloadType {
-    user_id: number;
+    userId: number;
 }
 
 export interface createTradePayloadType {
@@ -25,8 +25,8 @@ export interface saveScreenshotByTradeIdPayload {
 }
 
 export interface saveTradeScreenshotByTradeIdType {
-    tradeId: string;
-    userId: string;
+    tradeId: number;
+    userId: number;
     screenshotType: TRADE_SCREENSHOT_TYPE;
 }
 
