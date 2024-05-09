@@ -17,9 +17,9 @@ const prisma = new PrismaClient();
 /**
  * get all the trades based on the userId
  */
-export const findAllTradesByUserId = async (req: Request<{}, {}, findAllTradesByUserIdPayloadType>, res: Response) => {
+export const findAllTradesByUserId = async (req: Request<findAllTradesByUserIdPayloadType, {}, {}>, res: Response) => {
     try {
-        const user_id = req.body.user_id;
+        const user_id = req.params.userId;
 
         if (!user_id) {
             return res.status(HTTPStatusCode.BAD_REQUEST).json({ error: 'user_id is required' });
@@ -42,7 +42,6 @@ export const findAllTradesByUserId = async (req: Request<{}, {}, findAllTradesBy
  */
 export const createTrade = async (req: Request<{}, {}, createTradePayloadType>, res: Response) => {
     try {
-        console.log('This api point triggered');
         const trade = await prisma.trade.create({ data: req.body });
         res.status(HTTPStatusCode.CREATED).json({ message: 'Trade created successfully', trade });
     } catch (error) {
@@ -50,6 +49,10 @@ export const createTrade = async (req: Request<{}, {}, createTradePayloadType>, 
     }
 };
 
+/**
+ * This function will handle trade entry and exit screenshot based on the
+ * screenshot provided by the req.body
+ */
 export const saveTradeScreenshotByTradeId = async (
     req: Request<{}, {}, saveTradeScreenshotByTradeIdType>,
     res: Response
@@ -85,8 +88,8 @@ export const saveTradeScreenshotByTradeId = async (
 
         const trade = await prisma.trade.findUnique({
             where: {
-                id: parseInt(req.body.tradeId),
-                user_id: parseInt(req.body.userId),
+                id: req.body.tradeId,
+                user_id: req.body.userId,
             },
         });
 
@@ -114,8 +117,8 @@ export const saveTradeScreenshotByTradeId = async (
 
         const updateTrade = await prisma.trade.update({
             where: {
-                id: parseInt(req.body.tradeId),
-                user_id: parseInt(req.body.userId),
+                id: req.body.tradeId,
+                user_id: req.body.userId,
             },
             data: {
                 entry_screenshot_url:

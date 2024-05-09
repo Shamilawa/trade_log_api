@@ -5,6 +5,6 @@ import { createTrade, findAllTradesByUserId, saveTradeScreenshotByTradeId } from
 
 export const tradeRouter = express.Router();
 
-tradeRouter.get('/', findAllTradesByUserId);
+tradeRouter.get('/:userId', findAllTradesByUserId);
 tradeRouter.post('/create-trade', createTrade);
 tradeRouter.put('/trade-images', upload.single('tradeImage'), saveTradeScreenshotByTradeId);
